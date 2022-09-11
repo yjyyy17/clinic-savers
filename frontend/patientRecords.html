@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Bootstrap CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css'
+        rel='stylesheet'
+       integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC'
+       crossorigin='anonymous'>
+
+    <!-- Font Awesome CDN -->
+    <script src="https://use.fontawesome.com/8bc874cd5e.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Vue 3 -->
+    <script src='https://cdn.jsdelivr.net/npm/vue@3.0.2/dist/vue.global.js'></script>
+    
+    <title> Patient Records UI </title>
+</head>
+
+<body id="clinicLogin">
+    <!-- 1st page: Login Page (Session store Clinic ID)
+    2nd Page: Doctor or CA
+    Doctor Page: Dropdown Search PR & Prescribe Drug
+    CA Page: Search Drug, Edit button (make Supplier info into input text and reorderQuantity), "Restock Completed" button -->
+    
+    <div class="container">
+        <div class="container">
+    	    <div class="row pt-5 pb-3">
+                <div class="col-lg-9 mx-auto text-center text-white">
+                    <h1 class="display-4">Clinic Management System  </h1>
+                    <p class="lead mb-0">
+                        Compassion | Commmitment | Excellence | Team-Based Care | Value
+                    </p>   
+                </div> 
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-12 mx-auto">
+                    <h5 class="font-weight-light mb-4 text-white font-italic"> Patients' Records </h5>
+                    <div class="bg-white p-5 rounded shadow">
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link" href="./prescribeDrug.html"> Prescribe Drugs </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="./patientRecords.html"> Patient Records </a>
+                            </li>
+                        </ul>
+
+                        <form class="mt-4">
+                            <div class="form-group row">
+                              <label for="clinicId" class="col-sm-2 col-form-label"> <h5>Clinic ID </h5> </label>
+                              <div class="col-sm-10">
+                                <input type="text" readonly class="form-control-plaintext" id="clinicId" value="xxxx">
+                              </div>
+                            </div>
+                            <div class="form-group row">
+                              <label for="nric" class="col-sm-2 col-form-label"><h5>NRIC</h5></label>
+                              <div class="col-sm-8">
+                                <input type="text" class="form-control" id="nric" placeholder="Enter NRIC here">
+                              </div>
+                              <div class="col-sm-1">
+                                <button type="button" onclick="findRecords()" class="btn btn-primary text-white m-0">
+                                    Search
+                                </button>
+                              </div>
+                            </div>
+                            <div class="form-group mt-2">
+                                <button type="button" onclick="getAllRecords()" class="btn btn-primary text-white">
+                                    Show All Records!
+                                </button>
+                            </div>
+                          </form>
+
+                          <div class="row mx-auto mt-3">
+                            <table class="table table-striped" id="all">
+                            </table>
+                        </div>   
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setting the URL links to fetch for information
+        const patientRecord_URL ="http://localhost:5006/patientRecord"
+        const updateRecord_URL ="http://localhost:5120/update_record"
+        const deleteRecord_URL = "http://localhost:5120/delete_record"
+
+        // Displaying the ClinicId on the webpage to ensure that Clinic Staff will access to correct database. ClinicId taken from session.
+        document.getElementById("clinicId").value = sessionStorage.getItem("clinicId")
+
+        //Functions
+
+        // Get all patient records from the patientRecord database and construct the appropriate list of records to display.
+        // Edit and Delete buttons are included if the doctor would like to make changes to the patient record
+        async function getAllRecords(){
+            var clinicId = sessionStorage.getItem("clinicId")
+            const response =
+                        await fetch(`${patientRecord_URL}/${clinicId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data.data.PatientRecords)
+                                result =JSON.parse(JSON.stringify(data.data.PatientRecords))
+                                message_str =  `
+                                <thead>
+                                    <tr>
+                                        <th>NRIC</th>
+                                        <th>Drug Name</th>
+                                        <th>Prescribed Quantity</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th></th>
+                                        <th></th>
+                                    </tr>
+                                </thead>`
+                                result.reverse()
+                                console.log(result)
+                                for (const record of result) {
+                                    message_str += `
+                                    <tbody>
+                                    <tr id ="${record['clinicId']},${record['nric']},${record['drugName']},${record['date']},${record['time']}">
+                                        <td>
+                                            ${record['nric']}
+                                        </td>
+                                        <td>
+                                            ${record['drugName']}
+                                        </td>
+                                        <td>
+                                            ${record['prescribeQuantity']}
+                                        </td>
+                                        <td>
+                                            ${record['date']}
+                                        </td>
+                                        <td>
+                                            ${record['time']}
+                                        </td>
+                                        <td>
+                                            <button type="button"
+                                            class="btn btn-danger" id="delete,${record['clinicId']},${record['nric']},${record['drugName']},${record['prescribeQuantity']},${record['date']},${record['time']}" onclick="delete_record(this)">Delete
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button type="button"
+                                            class="btn btn-primary" id="update,${record['clinicId']},${record['nric']},${record['drugName']},${record['prescribeQuantity']},${record['date']},${record['time']}" onclick="update_record(this)">Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>`
+                                    //
+                                }
+                                document.getElementById('all').innerHTML = message_str
+
+                                return data.data.PatientRecords
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+
+                            });
+        }
+        // Call the function on first load to show all the patient records available.
+        getAllRecords()
+
+        // Function to find all records of a specific patient in the database and constructed for display.
+        async function findRecords(){
+            var nric = document.getElementById('nric').value
+            var clinicId = sessionStorage.getItem("clinicId")
+            const response =
+                        await fetch(`${patientRecord_URL}/clinic/${nric}/${clinicId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data)
+                                result =JSON.parse(JSON.stringify(data.data.PatientRecords))
+                                console.log(result)
+                                message_str =  `
+                                <thead>
+                                <tr>
+                                    <th>NRIC</th>
+                                    <th>Drug Name</th>
+                                    <th>Prescribed Quantity</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                                </thead>`
+                                result.reverse()
+                                console.log(result)
+                                for (const record of result) {
+                                    message_str += `
+                                    <tbody>
+                                        <tr id ="${record['clinicId']},${record['nric']},${record['drugName']},${record['date']},${record['time']}">
+                                            <td>
+                                                ${record['nric']}
+                                            </td>
+                                            <td>
+                                                ${record['drugName']}
+                                            </td>
+                                            <td>
+                                                ${record['prescribeQuantity']}
+                                            </td>
+                                            <td>
+                                                ${record['date']}
+                                            </td>
+                                            <td>
+                                                ${record['time']}
+                                            </td>
+                                            <td>
+                                                <button type="button"
+                                                class="btn btn-danger" id="delete,${record['clinicId']},${record['nric']},${record['drugName']},${record['prescribeQuantity']},${record['date']},${record['time']}" onclick="delete_record(this)">Delete
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button type="button"
+                                                class="btn btn-primary" id="update,${record['clinicId']},${record['nric']},${record['drugName']},${record['prescribeQuantity']},${record['date']},${record['time']}" onclick="update_record(this)">Edit
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>`   
+                                }
+                                
+                                document.getElementById('all').innerHTML = message_str
+
+                                return data.data.PatientRecords
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+
+                            });
+        }
+
+        // Function to delete a specific record from the database.
+        async function delete_record(item){
+            var nric = item.id.split(",")[2]
+            var time = item.id.split(",")[6]
+            var date = item.id.split(",")[5]
+            var clinicId = parseInt(item.id.split(",")[1])
+            var drugName = item.id.split(",")[3]
+            var prescribeQuantity = parseInt(item.id.split(",")[4])
+            console.log([nric, time, date, clinicId, drugName, prescribeQuantity])
+            fetch(deleteRecord_URL, {
+                method: 'POST', // or 'PUT'
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"nric": nric,"clinicId": clinicId,"drugName":drugName,"prescribeQuantity":prescribeQuantity,"date":date,"time":time}),
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Success:', data);
+                if (data.code === 201) {
+                    document.getElementById(`${clinicId},${nric},${drugName},${date},${time}`).remove()
+                    alert(`Successfully deleted record!`)
+                }
+                
+              })
+              .catch((error) => {
+                console.error('Error:', error);
+              });   
+        }
+        // Function to update the record. A text field would appear in the prescribed quantity and buttons changed to Update and Cancel
+        function update_record(item){
+            var nric = item.id.split(",")[2]
+            var time = item.id.split(",")[6]
+            var date = item.id.split(",")[5]
+            var clinicId = parseInt(item.id.split(",")[1])
+            var drugName = item.id.split(",")[3]
+            var prescribeQuantity = parseInt(item.id.split(",")[4])
+            update_btn = `
+                <button type="button"
+                class="btn btn-warning" id="save,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="save_record(this)">Update
+                </button>
+            `
+            item.parentElement.parentElement.children[5].innerHTML = update_btn
+            qty_input = `
+                <input type = "text" id="qty,${clinicId},${nric},${drugName},${date},${time}" value="${prescribeQuantity}">
+            `
+            item.parentElement.parentElement.children[2].innerHTML = qty_input
+            cancel_btn = `
+                <button type="button"
+                class="btn btn-light" id="cancel,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="cancel_record(this)">Cancel
+                </button>
+            `
+            item.parentElement.parentElement.children[6].innerHTML = cancel_btn
+        }
+        // Function when doctor changes their mind and cancels the update.
+        function cancel_record(item){
+            var nric = item.id.split(",")[2]
+            var time = item.id.split(",")[6]
+            var date = item.id.split(",")[5]
+            var clinicId = parseInt(item.id.split(",")[1])
+            var drugName = item.id.split(",")[3]
+            var prescribeQuantity = parseInt(item.id.split(",")[4])
+            delete_btn = `
+                <button type="button"
+                class="btn btn-danger" id="delete,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="delete_record(this)">Delete
+                </button>
+            `
+            item.parentElement.parentElement.children[5].innerHTML = delete_btn
+            item.parentElement.parentElement.children[2].innerHTML = prescribeQuantity
+            edit_btn = `
+                <button type="button"
+                class="btn btn-primary" id="update,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="update_record(this)">Edit
+                </button>
+            `
+            item.parentElement.parentElement.children[6].innerHTML = edit_btn
+        }
+        // Function to save the updated record into the database
+        async function save_record(item){
+            var nric = item.id.split(",")[2]
+            var time = item.id.split(",")[6]
+            var date = item.id.split(",")[5]
+            var clinicId = parseInt(item.id.split(",")[1])
+            var drugName = item.id.split(",")[3]
+            var prescribeQuantity = parseInt(document.getElementById(`qty,${clinicId},${nric},${drugName},${date},${time}`).value)
+            console.log([nric, time, date, clinicId, drugName, prescribeQuantity])
+            fetch(updateRecord_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"nric": nric,"clinicId": clinicId,"drugName":drugName,"prescribeQuantity":prescribeQuantity,"date":date,"time":time}),
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Success:', data);
+                if (data.code === 201 || data.code === 202) {
+                    document.getElementById(`${clinicId},${nric},${drugName},${date},${time}`).children[2].innerText = prescribeQuantity
+                    delete_btn = `
+                        <button type="button"
+                        class="btn btn-danger" id="delete,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="delete_record(this)">Delete
+                        </button>
+                    `
+                    document.getElementById(`${clinicId},${nric},${drugName},${date},${time}`).children[5].innerHTML = delete_btn
+                    edit_btn = `
+                        <button type="button"
+                        class="btn btn-primary" id="update,${clinicId},${nric},${drugName},${prescribeQuantity},${date},${time}" onclick="update_record(this)">Edit
+                        </button>
+                    `
+                    document.getElementById(`${clinicId},${nric},${drugName},${date},${time}`).children[6].innerHTML = edit_btn
+                    if (data.code === 201) {
+                        alert(`Successfully updated record!`)
+                    }
+                    else{
+                        alert(`Successfully updated record! Low quantity, email sent to supplier to restock!`)
+                    }
+                }
+                
+              })
+              .catch((error) => {
+                console.error('Error:', error);
+              });   
+        }
+    </script>
+
+    <!-- Bootstrap Javascript -->
+    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js'
+        integrity='sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+        crossorigin='anonymous'>
+    </script>
+
+</body>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="style.css">
+    
+
+    <!-- Bootstrap CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css'
+        rel='stylesheet'
+        integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC'
+        crossorigin='anonymous'>
+
+    <!-- Font Awesome CDN -->
+    <script src="https://use.fontawesome.com/8bc874cd5e.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    
+    <title> Patient UI </title>
+</head>
+<body>
+
+    <script>
+        if (sessionStorage.nric == null || location.search.substr(1).split("=").length == 2) {
+                sessionStorage.setItem('nric',location.search.substr(1).split("=")[1])
+        } 
+
+        var nric =  sessionStorage.getItem('nric');
+        console.log("=================" + nric + "==============")
+    </script>
+
+    <div class="container">
+        <div class="container">
+            <div class="row pt-5 pb-3">
+                <div class="col-lg-9 mx-auto text-center text-white">
+                    <h1 class="display-4">Quick Booking System </h1><p class="lead mb-0"> Making appointment booking quicker.</p>
+                    <p class="lead">Visit us here @ <a href="https://www.rafflesmedicalgroup.com/">
+                        <u class="text-white">Raffles Medical</u></a>
+                    </p>   
+                </div> 
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-12 mx-auto">
+                    <h5 class="font-weight-light mb-4 text-white font-italic"> Find Clinics Near You </h5>
+                    <div class="bg-white p-5 rounded shadow" id="searchClinic">
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="./patientUI.html"> Find Clinics </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./viewAppointments.html"> View Appointments </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./subsidyCard.html"> Subsidy Wallet </a>
+                            </li>
+                        </ul>
+
+                        <h5 id="postalHeader" class="font-weight-light mb-4 text-white font-italic"> Find clinics near you </h5>
+                        <div id="clinicsForm">
+                            <div class="p-1 bg-light rounded rounded-pill border shadow-sm mb-2">
+                                <div class="input-group">
+                                    <input id="postalCode" type="search" placeholder="Enter your postal code here!" aria-describedby="button-addon1" class="form-control border-0 bg-light">
+
+                                    <div class="input-group-append">
+                                        <button type="button" onclick="getClinics(this)" class="btn btn-link text-primary" id="searchAll">
+                                            <i class="fa fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-check">
+                                <button class="btn btn-primary" onclick="getClinics(this)" id="homeAddress">
+                                    Use Home Address
+                                </button>
+                            </div>
+                        
+                            <!-- build the message in js -->
+                            <div class="row mx-auto mt-3">
+                                <table class="table table-striped" id="listClinics">
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3" id="showAppt">
+
+            </div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script>  
+        var nric = sessionStorage.getItem('nric')
+        const viewClinicURL = "http://localhost:5100/viewClinics";
+        const selected_clinic_url = "http://localhost:5008/set_appointment"; 
+        const appointment_URL= "http://localhost:5003/appointment"
+        
+        async function getClinics(item){
+            document.getElementById("showAppt").innerHTML = ""
+
+            var nric =  sessionStorage.getItem('nric')
+            var postalCode
+            
+            if (item.id == "homeAddress") {
+                postalCode = ""
+            }
+            else{
+                postalCode = document.getElementById("postalCode").value
+            }
+            const response =
+                    await fetch(viewClinicURL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({"nric": nric,"postalCode":postalCode}),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Success:', data);
+                            if (data.code === 200) {
+                                console.log(data)
+                                clinics = data.data
+                                message_str =  `
+                                <thead>
+                                <tr>
+                                    <th>Clinic Name</th>
+                                    <th> Clinic Address </th>
+                                    <th> Queue Length </th>
+                                    <th> </th>
+                                </tr>
+                                </thead>`
+                                for (const clinic of clinics) {
+                                    message_str += `
+                                    <tbody>
+                                    <tr id ="${clinic[0]}">
+                                        <td>
+                                            ${clinic[1]['name']}
+                                        </td>
+                                        <td>
+                                            ${clinic[1]['address']}
+                                        </td>
+                                        <td>
+                                            ${clinic[1]['queue']}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-primary text-center" id="${nric},${clinic[0]},${postalCode}" onclick="toggle_form(this)">
+                                                Book Appointment
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                    `
+                                }
+                                // Add the list of clinics into the webpage
+                                document.getElementById("listClinics").innerHTML= message_str
+                                // Scroll the list of clinics into view for better viewing if the list is long
+                                document.getElementById('searchClinic').scrollIntoView()
+                                
+                            }else if (data.code===500){
+                                msg_str = "<p style = 'color:red'> No clinics nearby!<p>"
+                                document.getElementById("listClinics").innerHTML= msg_str
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error);
+                        });
+        }
+
+        async function toggle_form(item){
+            clinicId = item.id.split(',')[1]
+            nric = item.id.split(',')[0]
+            postalCode = item.id.split(',')[2]
+            clinicName = item.parentElement.parentElement.children[0].innerText
+            
+            message_str = `
+            <h5 class="font-weight-light mb-4 text-white font-italic"> Make an appointment & go! </h5>
+            <div class="bg-white p-5 rounded shadow">
+                <h3> ${clinicName} </h3>
+                <form action="">
+                    <label for="apptDate"> <h5> Appointment Date </h5></label>
+                    <div>
+                `
+                for (let i = 0; i < 3; i++) {
+                    var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                    var currDate = new Date()
+                    currDate.setDate(currDate.getDate() + i)
+                    var todayDay =currDate.getFullYear()+'-'+(currDate.getMonth()+1)+'-'+currDate.getDate()
+                    
+
+                    timeslots1 =["09:00:00","09:30:00","10:00:00","10:30:00","11:00:00","11:30:00","12:00:00","12:30:00"]
+                    timeslots2=["13:00:00","13:30:00","14:00:00","14:30:00","15:00:00","15:30:00","16:00:00","16:30:00"]
+                    message_str += `
+                            <div class="fw-bold">
+                                ${days[currDate.getDay()]} (${todayDay})
+                            </div>
+                            <table>
+                                <tr>`
+                    for (const time of timeslots1) {
+                        var nowDate= new Date()
+                        var slotDate = new Date(currDate.getFullYear(),currDate.getMonth(),currDate.getDate(),time.split(":")[0],time.split(":")[1],time.split(":")[2],"00")
+                        var disabled = ""
+
+                        if (nowDate > slotDate){
+                            disabled = "disabled"
+                        }
+                        message_str += `
+                                <td>
+                                    <button id="${todayDay},${time}" class="btn btn-dark" onclick="buttonColour(this)" ${disabled}>
+                                        ${time}
+                                    </button>
+                                </td> `
+                        
+                        
+                    }
+                    message_str += `</tr>
+                                <tr>`
+                    for (const time of timeslots2) {
+                        var nowDate= new Date()
+                        var slotDate = new Date(currDate.getFullYear(),currDate.getMonth(),currDate.getDate(),time.split(":")[0],time.split(":")[1],time.split(":")[2],"00")
+                        var disabled = ""
+
+                        if (nowDate > slotDate){
+                            disabled = "disabled"
+                        }
+                        message_str += `
+                                <td>
+                                    <button id="${todayDay},${time}" class="btn btn-dark" onclick="buttonColour(this)" ${disabled}>
+                                        ${time}
+                                    </button>
+                                </td> `
+                    }
+
+                    message_str += `
+                                </tr>
+                            </table>
+                    `
+                }
+
+    
+            message_str += `
+                    
+                    </div>
+                    <br>
+                    <label for="symptoms"> <h5> Let us know about your symptoms. </h5></label>
+                    <div class="p-1 bg-light rounded rounded-pill border shadow-sm mb-2">
+                        <div class="input-group">
+                            <input id="symptoms" type="text" aria-describedby="button-addon1" class="form-control border-0 bg-light">
+                        </div>
+                    </div>
+                    <br>
+                    <button type="button" class="btn btn-success text-center" id="${nric},${clinicId}" onclick="bookAppointment(this)">
+                        Submit
+                    </button>
+                    <button type="button" class="btn btn-secondary text-center" id="${postalCode}" onclick="setSearch(this)">
+                        Cancel
+                    </button>
+                </form>
+            </div>
+            `
+            // Add the appointment booking form at the bottom of the page
+            document.getElementById("clinicsForm").innerHTML = message_str
+
+            // Fetch for loop
+
+            for (let i = 0; i < 3; i++) {
+                var currDate = new Date()
+                currDate.setDate(currDate.getDate() + i)
+                var todayDay =currDate.getFullYear()+'-'+(currDate.getMonth()+1)+'-'+currDate.getDate()
+                const response =
+                    await fetch(`${appointment_URL}/${clinicId}/${todayDay}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data)
+                            if (data.code === 200){
+                                //console.log(data.message)
+                                for (slot of data.data['appts']){
+                                    document.getElementById(`${slot.appointmentDate},${slot.appointmentTime}`).disabled = "true"
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            // Errors when calling the service; such as network error, 
+                            // service offline, etc
+                            console.log(error);
+                        });
+                
+            }
+        }
+
+        function setSearch(item) {
+            postalCode = item.id
+            document.getElementById("clinicsForm").innerHTML = `
+                            <div class="p-1 bg-light rounded rounded-pill border shadow-sm mb-2">
+                                <div class="input-group">
+                                    <input id="postalCode" value="${postalCode}" type="search" placeholder="Enter your postal code here!" aria-describedby="button-addon1" class="form-control border-0 bg-light">
+
+                                    <div class="input-group-append">
+                                        <button type="button" onclick="getClinics(this)" class="btn btn-link text-primary" id="searchAll">
+                                            <i class="fa fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-check">
+                                <button class="btn btn-primary" onclick="getClinics(this)" id="homeAddress">
+                                    Use Home Address
+                                </button>
+                            </div>
+                        
+                            <!-- build the message in js -->
+                            <div class="row mx-auto mt-3">
+                                <table class="table table-striped" id="listClinics">
+                                </table>
+                            </div>
+            
+            `
+            if (postalCode == "") {
+                getClinics({"id": "homeAddress"})
+            }
+            else{
+
+                getClinics({"id": "notHomeAddress"})
+            }
+        }
+
+        async function bookAppointment(item){
+            console.log(item)
+            clinicId = item.id.split(',')[1]
+            nric = item.id.split(',')[0]
+            symptoms = document.getElementById("symptoms").value
+            appointmentDate = document.getElementsByName("buttonSelected")[0].id.split(",")[0]
+            appointmentTime = document.getElementsByName("buttonSelected")[0].id.split(",")[1]
+            const response =
+                    await fetch(selected_clinic_url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({"nric": nric, "clinicId":clinicId, "symptoms": symptoms, "appointmentDate":appointmentDate, "appointmentTime":appointmentTime}),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Success:', data);
+                            if (data.code === 255 || data.code === 256 || data.code === 257) {
+                                console.log(data)
+                                message = data["message"]
+                                alert(message)
+                                location.href = "./viewAppointments.html"
+                            }
+                            else{
+                                alert("You already have an existing appointment during this particular timelsot! Please select another timeslot.")
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error);
+                        });
+        }
+
+        function buttonColour(item){
+            event.preventDefault()
+            if (document.getElementsByName("buttonSelected").length == 1) {
+                document.getElementsByName("buttonSelected")[0].classList = "btn btn-dark"
+                document.getElementsByName("buttonSelected")[0].name = ""
+            }
+            if (document.getElementById(item.id).classList =="btn btn-dark"){
+                document.getElementById(item.id).classList = "btn btn-danger"
+                document.getElementById(item.id).name = "buttonSelected"
+            }
+            else if (document.getElementById(item.id).classList =="btn btn-danger"){
+                document.getElementById(item.id).classList = "btn btn-dark"
+                document.getElementById(item.id).name = ""
+            }   
+        }
+
+    </script>
+
+    <!-- Bootstrap Javascript; at the end of the <body> -->
+    <script 
+    src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js'
+    integrity='sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+    crossorigin='anonymous'></script> 
+</body>
+</html>

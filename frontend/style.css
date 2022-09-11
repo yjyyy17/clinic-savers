@@ -1,0 +1,13 @@
+.form-control:focus {
+    box-shadow: none;
+}
+
+.form-control::placeholder {
+    font-size: 0.95rem;
+    color: #aaa;
+    font-style: italic;
+}
+
+body {
+    background: linear-gradient(to right, #616161, #9bc5c3);
+  }

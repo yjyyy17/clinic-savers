@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Bootstrap CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css'
+        rel='stylesheet'
+       integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC'
+       crossorigin='anonymous'>
+
+    <!-- Font Awesome CDN -->
+    <script src="https://use.fontawesome.com/8bc874cd5e.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Vue 3 -->
+    <script src='https://cdn.jsdelivr.net/npm/vue@3.0.2/dist/vue.global.js'></script>
+    
+    <title> Restock UI </title>
+</head>
+
+<body id="clinicLogin">
+    <!-- 1st page: Login Page (Session store Clinic ID)
+    2nd Page: Doctor or CA
+    Doctor Page: Dropdown Search PR & Prescribe Drug
+    CA Page: Search Drug, Edit button (make Supplier info into input text and reorderQuantity), "Restock Completed" button -->
+    <div class="container">
+        <div class="container">
+    	    <div class="row pt-5 pb-3">
+                <div class="col-lg-9 mx-auto text-center text-white">
+                    <h1 class="display-4">Clinic Management System  </h1>
+                    <p class="lead mb-0">
+                        Compassion | Commmitment | Excellence | Team-Based Care | Value
+                    </p>   
+                </div> 
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-12 mx-auto">
+                    <h5 class="font-weight-light mb-4 text-white font-italic"> Restock Drugs </h5>
+
+                    <div class="bg-white p-5 rounded shadow">
+                        <form>
+                            <div class="form-group row">
+                              <label for="clinicId" class="col-sm-3 col-form-label"> <h5>Clinic ID </h5> </label>
+                              <div class="col-sm-7">
+                                <input type="text" readonly class="form-control-plaintext" id="clinicId" value="xxxx">
+                              </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="drugName" class="col-sm-3 col-form-label"><h5>Search By Drug Name</h5></label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control" id="drugName" placeholder="Enter drug name here">
+                                </div>
+                                <div class="col-sm-2">
+                                    <button type="button" onclick="findDrug()" class="btn btn-primary text-white m-0">
+                                        Search
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-2">
+                                <button type="button" onclick="getAllDrugs()" class="btn btn-primary text-white">
+                                    Show All Drugs!
+                                </button>
+                            </div>
+                        </form> 
+
+                        <div class="row mx-auto mt-3">
+                            <table class="table table-striped" id="all">
+                            </table>
+                        </div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var clinicId= sessionStorage.getItem("clinicId")
+        document.getElementById("clinicId").value = clinicId
+        const drug_URL =`http://localhost:5007/drug/${clinicId}`
+        //functions
+        async function getAllDrugs(){
+            const response =
+                        await fetch(drug_URL)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data.data.drug)
+                                result =JSON.parse(JSON.stringify(data.data.drug))
+                                message_str =  `<tr>
+                                    <th class="text-center">Drug Name</th>
+                                    <th class="text-center">Remaining Quantity</th>
+                                    <th class="text-center">Restock Status</th>
+                                    <th class="text-center">Supplier Name</th>
+                                    <th class="text-center">Supplier Email</th>
+                                    <th class="text-center">Reorder Quantity</th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>`
+                                console.log(result)
+                                for (const drug of result) {
+
+                                    message_str += `
+                                    <tr id ="${drug['drugName']},${drug['clinicId']}">
+                                        <td class="text-center">
+                                            ${drug['drugName']}
+                                        </td>
+                                        <td class="text-center">
+                                            ${drug['quantity']}
+                                        </td>
+                                        <td class="text-center">
+                                            ${drug['restockStatus']}
+                                        </td>
+                                        <td class="text-center">
+                                            ${drug['supplierName']}
+                                        </td>
+                                        <td class="text-center">
+                                            ${drug['supplierEmail']}
+                                        </td>
+                                        <td class="text-center">
+                                            ${drug['reorderQuantity']}
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button"
+                                            class="btn btn-primary" id="${drug['drugName']},${drug['quantity']},${drug['restockStatus']},${drug['supplierName']},${drug['supplierEmail']},${drug['reorderQuantity']}" onclick="edit(this)">Edit
+                                            </button>
+                                        </td>
+                                        `
+                                    if (drug['restockStatus'] =="yes"){
+                                        message_str+=`
+                                            <td class="text-center">
+                                                <button type="button"
+                                                class="btn btn-success" id="confirm,${drug['drugName']},${drug['quantity']},${drug['restockStatus']},${drug['supplierName']},${drug['supplierEmail']},${drug['reorderQuantity']}" onclick="confirm_delivery(this)">Confirm Delivery</button>
+                                            </td>
+                                        </tr>
+                                        </tbody>`
+                                    } else {
+                                        message_str += `<td></td></tr></tbody>`
+                                    }
+                                        
+                                    //
+                                }
+                                document.getElementById('all').innerHTML = message_str
+
+                                return data.data.drug
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+
+                            });
+        }
+        getAllDrugs()
+
+        async function findDrug(){
+            var drugName = document.getElementById('drugName').value
+            console.log(drugName)
+            const response =
+                        await fetch(`${drug_URL}/${drugName}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data)
+                                result =JSON.parse(JSON.stringify(data.data))
+                                message_str =  `
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">Drug Name</th>
+                                        <th class="text-center">Remaining Quantity</th>
+                                        <th class="text-center">Restock Status</th>
+                                        <th class="text-center">Supplier Name</th>
+                                        <th class="text-center">Supplier Email</th>
+                                        <th class="text-center">Reorder Quantity</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>`
+                                console.log(result)
+                                
+                                message_str += `
+                                <tbody>
+                                <tr id ="${result['drugName']},${result['clinicId']}">
+                                    <td class="text-center">
+                                        ${result['drugName']}
+                                    </td>
+                                    <td class="text-center">
+                                        ${result['quantity']}
+                                    </td>
+                                    <td class="text-center">
+                                        ${result['restockStatus']}
+                                    </td>
+                                    <td class="text-center" id ="${result['supplierName']}">
+                                        ${result['supplierName']}
+                                    </td>
+                                    <td class="text-center" id ="${result['supplierEmail']}">
+                                        ${result['supplierEmail']}
+                                    </td>
+                                    <td class="text-center" id ="${result['reorderQuantity']}">
+                                        ${result['reorderQuantity']}
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button"
+                                        class="btn btn-primary" id="${result['drugName']},${result['quantity']},${result['restockStatus']},${result['supplierName']},${result['supplierEmail']},${result['reorderQuantity']}" onclick="edit(this)">Edit
+                                        </button>
+                                    </td>`
+                                if (result['restockStatus'] =="yes"){
+                                    message_str+=`
+                                        <td class="text-center">
+                                            <button type="button"
+                                            class="btn btn-success" id="confirm,${result['drugName']},${result['quantity']},${result['restockStatus']},${result['supplierName']},${result['supplierEmail']},${result['reorderQuantity']}" onclick="confirm_delivery(this)">Confirm Delivery</button>
+                                        </td>
+                                    </tr>
+                                    </tbody>`
+                                } else {
+                                    message_str += `<td></td></tr> </tbody>`
+                                }
+                                    
+                                
+                                document.getElementById('all').innerHTML = message_str
+
+                                return data.data
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+
+                            });
+        }
+
+        function edit(item){
+            var drugName = item.id.split(",")[0]
+            var quantity = item.id.split(",")[1]
+            var restockStatus = item.id.split(",")[2]
+            var supplierName = item.id.split(",")[3]
+            var supplierEmail = item.id.split(",")[4]
+            var reorderQuantity = item.id.split(",")[5]
+            console.log([drugName,quantity, restockStatus,supplierName,supplierEmail,reorderQuantity])
+            supplierName_input = `
+                <input type = "text" id="supplierName,${drugName}" value="${supplierName}">
+            `
+            item.parentElement.parentElement.children[3].innerHTML = supplierName_input
+            supplierEmail_input = `
+                <input type = "text" id="supplierEmail,${drugName}" value="${supplierEmail}">
+            `
+            item.parentElement.parentElement.children[4].innerHTML = supplierEmail_input
+            reorderQuantity_input = `
+                <input type = "number" id="reorderQuantity,${drugName}" value="${reorderQuantity}" min='0'>
+            `
+            item.parentElement.parentElement.children[5].innerHTML = reorderQuantity_input
+            cancel_btn = `<button type="button"
+                            class="btn btn-light" id="cancel,${drugName},${quantity},${restockStatus},${supplierName},${supplierEmail},${reorderQuantity}" onclick="cancel_update(this)">Cancel
+                        </button>`
+            item.parentElement.parentElement.children[7].innerHTML = cancel_btn
+            update_btn = `
+                    <button type="button"
+                    class="btn btn-warning" id="save,${drugName},${quantity},${restockStatus},${supplierName},${supplierEmail},${reorderQuantity}" onclick="save_drug(this)">Update
+                    </button>
+            `
+            item.parentElement.parentElement.children[6].innerHTML = update_btn
+        }
+ 
+        function cancel_update(item){
+            var drugName = item.id.split(",")[1]
+            var quantity = parseInt(item.id.split(",")[2])
+            var restockStatus = item.id.split(",")[3]
+            var supplierName = item.id.split(",")[4]
+            var supplierEmail = item.id.split(",")[5]
+            var reorderQuantity = parseInt(item.id.split(",")[6])
+
+            item.parentElement.parentElement.children[3].innerText= supplierName
+            item.parentElement.parentElement.children[4].innerText= supplierEmail
+            item.parentElement.parentElement.children[5].innerText= reorderQuantity
+
+
+            edit_btn = `
+                <button type="button"
+                class="btn btn-primary" id="${drugName},${quantity},${restockStatus},${supplierName},${supplierEmail},${reorderQuantity}" onclick="edit(this)">Edit
+                </button>
+            `
+            item.parentElement.parentElement.children[6].innerHTML = edit_btn
+            var cfm_delivery_btn
+            if (restockStatus == "yes") {
+                cfm_delivery_btn = `
+                    <button type="button"
+                    class="btn btn-success" id="confirm,${drugName},${quantity},${restockStatus},${supplierName},${supplierEmail},${reorderQuantity}" onclick="confirm_delivery(this)">Confirm Delivery
+                    </button>
+                `
+            }
+            else{
+                cfm_delivery_btn = `<td></td>`
+            }
+            item.parentElement.parentElement.children[7].innerHTML = cfm_delivery_btn
+        }
+
+        async function save_drug(item){
+            var drugName = item.id.split(",")[1]
+            var quantity = item.id.split(",")[2]
+            var restockStatus = item.id.split(",")[3]
+            var supplierName = item.id.split(",")[4]
+            var supplierEmail = item.id.split(",")[5]
+            var reorderQuantity = parseInt(item.id.split(",")[6])
+            var newSupplierName = document.getElementById(`supplierName,${drugName}`).value
+            var newSupplierEmail = document.getElementById(`supplierEmail,${drugName}`).value
+            var newReorderQuantity = parseInt(document.getElementById(`reorderQuantity,${drugName}`).value)
+            console.log([clinicId, drugName, newSupplierName,newSupplierEmail,newReorderQuantity])
+            fetch(`${drug_URL}/${drugName}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"supplierName": newSupplierName,"supplierEmail": newSupplierEmail,"reorderQuantity":newReorderQuantity}),
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Success:', data);
+                if (data.code === 200) {
+                    document.getElementById(`${drugName},${clinicId}`).children[3].innerText = newSupplierName
+                    document.getElementById(`${drugName},${clinicId}`).children[4].innerText = newSupplierEmail
+                    document.getElementById(`${drugName},${clinicId}`).children[5].innerText = newReorderQuantity
+                    if (restockStatus == "yes") {
+                        confirm_btn = `
+                            <button type="button"
+                            class="btn btn-success" id="confirm,${drugName}, ${quantity},${restockStatus},${newSupplierName},${newSupplierEmail},${newReorderQuantity}" onclick="confirm_delivery(this)">Confirm Delivery</button>
+                        `
+                        document.getElementById(`${drugName},${clinicId}`).children[7].innerHTML= confirm_btn   
+                    }
+                    else{
+                        document.getElementById(`${drugName},${clinicId}`).children[7].innerText = ""  
+                    }
+                    edit_btn = `
+                        <button type="button"
+                        class="btn btn-primary" id="${drugName},${quantity},${restockStatus},${newSupplierName},${newSupplierEmail},${newReorderQuantity}" onclick="edit(this)">Edit
+                        </button>
+                    `
+                    document.getElementById(`${drugName},${clinicId}`).children[6].innerHTML= edit_btn
+                    alert(`${drugName} successfully updated!`)
+                }
+                
+              })
+              .catch((error) => {
+                console.error('Error:', error);
+              });   
+        }
+        async function confirm_delivery(item){
+            var drugName = item.id.split(",")[1]
+            var quantity = parseInt(item.id.split(",")[2])
+            var restockStatus = item.id.split(",")[3]
+            var supplierName = item.id.split(",")[4]
+            var supplierEmail = item.id.split(",")[5]
+            var reorderQuantity = parseInt(item.id.split(",")[6])
+            var newQuantity = quantity +reorderQuantity
+            console.log(drugName)
+            fetch(`${drug_URL}/${drugName}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"restockStatus": "no","quantity": newQuantity}),
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Success:', data);
+                if (data.code === 200) {
+                    document.getElementById(`${drugName},${clinicId}`).children[2].innerText = `no`
+                    document.getElementById(`${drugName},${clinicId}`).children[1].innerText = `${newQuantity}`
+                    document.getElementById(`${drugName},${clinicId}`).children[7].innerText = ""
+                    document.getElementById(`${drugName},${clinicId}`).children[6].innerHTML = `<button type="button" class="btn btn-primary" id="${drugName},${newQuantity},no,${supplierName},${supplierEmail},${reorderQuantity}" onclick="edit(this)">Edit</button>`
+                    alert(`${drugName} confirmed delivery!`)
+                }
+                
+              })
+              .catch((error) => {
+                console.error('Error:', error);
+            });   
+        }
+    </script>
+
+    <!-- Bootstrap Javascript -->
+    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js'
+        integrity='sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+        crossorigin='anonymous'>
+    </script>
+
+</body>
+
+</html>

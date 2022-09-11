@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Bootstrap CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css'
+        rel='stylesheet'
+       integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC'
+       crossorigin='anonymous'>
+
+    <!-- Font Awesome CDN -->
+    <script src="https://use.fontawesome.com/8bc874cd5e.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Vue 3 -->
+    <script src='https://cdn.jsdelivr.net/npm/vue@3.0.2/dist/vue.global.js'></script>
+    
+    <title> Prescribe Drugs UI </title>
+</head>
+
+<body id="clinicLogin">
+    <!-- 1st page: Login Page (Session store Clinic ID)
+    2nd Page: Doctor or CA
+    Doctor Page: Dropdown Search PR & Prescribe Drug
+    CA Page: Search Drug, Edit button (make Supplier info into input text and reorderQuantity), "Restock Completed" button -->
+
+    <div class="container">
+        <div class="container">
+    	    <div class="row pt-5 pb-3">
+                <div class="col-lg-9 mx-auto text-center text-white">
+                    <h1 class="display-4">Clinic Management System  </h1>
+                    <p class="lead mb-0">
+                        Compassion | Commmitment | Excellence | Team-Based Care | Value
+                    </p>   
+                </div> 
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-lg-12 mx-auto">
+                    <h5 class="font-weight-light mb-4 text-white font-italic"> Prescribe Drugs </h5>
+                    <div class="bg-white p-5 rounded shadow">
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="./prescribeDrug.html"> Prescribe Drugs </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="./patientRecords.html"> Patient Records </a>
+                            </li>
+                        </ul>
+
+                        <form class="mt-4">
+                            <div class="form-group row">
+                              <label for="clinicId" class="col-sm-2 col-form-label"> <h5>Clinic ID </h5> </label>
+                              <div class="col-sm-10">
+                                <input type="text" readonly class="form-control-plaintext" id="clinicId" value="xxxx">
+                              </div>
+                            </div>
+
+                            <div class="form-group row">
+                              <label for="time" class="col-sm-2 col-form-label"><h5>Current Time</h5></label>
+                              <div class="col-sm-10">
+                                <h6 id="time" class="mt-2"> xxxxx </h6>
+                              </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="date" class="col-sm-2 col-form-label"><h5>Current Date</h5></label>
+                                <div class="col-sm-10">
+                                  <h6 id="date" class="mt-2"> xxxxx </h6>
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="nric" class="col-sm-2 col-form-label"><h5>NRIC</h5></label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="nric" placeholder="Enter NRIC here">
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="drugNameSearch" class="col-sm-2 col-form-label"><h5>Drug Name</h5></label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control" id="drugNameSearch" placeholder="Enter drug name here">
+                                </div>
+                                <div class="col-sm-1">
+                                    <button type="button" onclick="findDrug()" class="btn btn-primary text-white m-0">
+                                        Search
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-2">
+                                <button type="button" onclick="getAllDrugs()" class="btn btn-primary text-white">
+                                    Show All Drugs!
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="row mx-auto mt-3">
+                            <table class="table table-striped" id="all">
+                                
+                            </table>
+                        </div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setting the URL links to fetch for information
+        const drug_URL ="http://localhost:5007/drug"
+        const prescribeDrug_URL ="http://localhost:5120/create_record"
+
+        // Displaying the ClinicId on the webpage to ensure that Clinic Staff will access to correct database. ClinicId taken from session.
+        document.getElementById("clinicId").value = sessionStorage.getItem("clinicId")
+
+        // Get the current date and time function and display on the webpage
+        function setTime(){
+            var today = new Date()
+            var currTime =today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds()
+            var currDate =today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate()
+            document.getElementById('time').innerText = currTime
+            document.getElementById('date').innerText = currDate
+            setTimeout(setTime,1000)
+        }
+        setTime()
+
+
+        //Functions
+
+        // Get all drugs from the drug database and construct the appropriate list of drugs to display.
+        // Doctors can see the remaining quantity of each drug and a text field to input the amount to prescribe.
+        // Upon clicking on the Prescribe Button, the prescribe_drug function would be called.
+        async function getAllDrugs(){
+            var clinicId = sessionStorage.getItem("clinicId")
+            const response =
+                        await fetch(`${drug_URL}/${clinicId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data.data.drug)
+                                result =JSON.parse(JSON.stringify(data.data.drug))
+                                message_str =  `
+                                <thead>
+                                    <tr>
+                                        <th>Drug Name</th>
+                                        <th>Remaining Quantity</th>
+                                        <th>Prescribe Quantity</th>
+                                        <th></th>
+                                </thead>`
+                                console.log(result)
+                                for (const drug of result) {
+                                    message_str += `
+                                    <tbody>
+                                        <tr id ="${drug['drugName']},${drug['clinicId']}">
+                                            <td>
+                                                ${drug['drugName']}
+                                            </td>
+                                            <td>
+                                                ${drug['quantity']}
+                                            </td>
+                                            <td>
+                                                <input type="number" id="${drug['drugName']},quantity" name="quantity" min=0 step=5>
+                                            </td>
+                                                <td><button type="button" class="btn btn-primary" id="${drug['drugName']}" onclick="prescribe_drug(this)">Prescribe</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>`
+                                }
+                                document.getElementById('all').innerHTML = message_str
+                                return data.data.drug
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+                            });
+        }
+        // Call the function on first load to show all the drugs available to prescribe.
+        getAllDrugs()
+
+        // Function to find a specific drug in the database and constructed for display.
+        async function findDrug(){
+            var drugName = document.getElementById('drugNameSearch').value
+            var clinicId = sessionStorage.getItem("clinicId")
+            const response =
+                        await fetch(`${drug_URL}/${clinicId}/${drugName}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data)
+                                result =JSON.parse(JSON.stringify(data.data))
+                                message_str =  `
+                                <thead>
+                                    <th>Drug Name</th>
+                                    <th>Remaining Quantity</th>
+                                    <th>Prescribe Quantity</th>
+                                    <th></th>
+                                </thead>`
+                                console.log(result)
+                                
+                                message_str += `
+                                <tbody>
+                                    <tr id ="${result['drugName']},${result['clinicId']}">
+                                        <td>
+                                            ${result['drugName']}
+                                        </td>
+                                        <td>
+                                            ${result['quantity']}
+                                        </td>
+                                        <td>
+                                            <input type="number" id="${result['drugName']},quantity" name="quantity" step=5>
+                                        </td>
+                                            <td><button type="button" class="btn btn-primary" id="${result['drugName']}" onclick="prescribe_drug(this)">Prescribe</button>
+                                        </td>
+                                    </tr>
+                                </tbody>`
+                                document.getElementById('all').innerHTML = message_str
+                                return data.data
+                            })
+                            .catch(error => {
+                                // Errors when calling the service; such as network error, 
+                                // service offline, etc
+                                console.log(error);
+                            });
+        }
+
+        // Function that fetch the prescribeDrugURL to call the complex microservice prescribeDrug
+        // Alert messages will be shown appropriately for the different instances.
+        async function prescribe_drug(item){
+            var nric = document.getElementById("nric").value
+            var time = document.getElementById("time").innerText
+            var date = document.getElementById("date").innerText
+            var clinicId = sessionStorage.getItem("clinicId")
+            var drugName = item.id
+            var prescribeQuantity = parseInt(document.getElementById(drugName+",quantity").value)
+            console.log([nric, time, date, clinicId, drugName, prescribeQuantity])
+            fetch(prescribeDrug_URL, {
+                method: 'POST', // or 'PUT'
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"nric": nric,"clinicId": clinicId,"drugName":drugName,"prescribeQuantity":prescribeQuantity,"date":date,"time":time}),
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Success:', data);
+                if (data.code === 201 || data.code === 202) {
+                    document.getElementById(`${drugName},${clinicId}`).children[1].innerText = data.data.drug_result.data.quantity
+                    document.getElementById(`${drugName},quantity`).value = ""
+                    if (data.code === 201) {
+                        alert(`${drugName} successfully prescribed!`)
+                    }
+                    else{
+                        alert(`${drugName} successfully prescribed! Low quantity, email sent to supplier to restock!`)
+                    }
+                }
+                
+              })
+              .catch((error) => {
+                console.error('Error:', error);
+              });
+        }
+    </script>
+
+    <!-- Bootstrap Javascript -->
+    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js'
+        integrity='sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+        crossorigin='anonymous'>
+    </script>
+
+</body>
+
+</html>

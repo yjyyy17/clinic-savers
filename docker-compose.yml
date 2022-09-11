@@ -1,0 +1,231 @@
+version: "3.8"
+
+volumes:
+  rabbitmq_data:
+
+
+
+services:
+ 
+  ###################################
+  # Patient: The Patient microservice
+  ###################################
+  patient:
+    build:
+      context: ./
+      dockerfile: patient.Dockerfile
+    image: clinicsavers/patient:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/patient
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+        - "5000:5000"
+ 
+  #######################################################
+  # Clinic: The Clinic microservice
+  #######################################################
+  clinic:
+    build:
+      context: ./
+      dockerfile: clinic.Dockerfile
+    image: clinicsavers/clinic:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/clinic
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5002:5002"
+
+  #######################################################
+  # Appointment: The Appointment microservice
+  #######################################################
+  appointment:
+    build:
+      context: ./
+      dockerfile: appointment.Dockerfile
+    image: clinicsavers/appointment:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/appointment
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+        - "5003:5003"
+
+  #######################################################
+  # Distance: The Distance microservice
+  #######################################################
+  distance:
+    build:
+      context: ./
+      dockerfile: distance.Dockerfile
+    image: clinicsavers/distance:esd
+    restart: always
+    environment:
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+        - "5001:5001"
+
+  #######################################################
+  # Drug: The Drug microservice
+  #######################################################
+  drug:
+    build:
+      context: ./
+      dockerfile: drug.Dockerfile
+    image: clinicsavers/drug:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/drug
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5007:5007"
+
+  #######################################################
+  # PatientRecord: The PatientRecord microservice
+  #######################################################
+  patientRecord:
+    build:
+      context: ./
+      dockerfile: patientRecord.Dockerfile
+    image: clinicsavers/patient_record:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/patientRecord
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5006:5006"
+
+  #######################################################
+  # Subsidy: The Subsidy microservice
+  #######################################################
+  subsidy:
+    build:
+      context: ./
+      dockerfile: subsidy.Dockerfile
+    image: clinicsavers/subsidy:esd
+    restart: always
+    environment:
+      dbURL: mysql+mysqlconnector://is213@host.docker.internal:3306/subsidy
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5004:5004"
+
+  ####################################
+  # RabbitMQ: The messaging broker   
+  ####################################
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: esd-rabbit
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes: 
+      - rabbitmq_data:/var/lib/rabbitmq
+      
+  #################################################
+  # Notification: The Notification microservice
+  #################################################
+  notification:
+    build:
+      context: ./
+      dockerfile: notification.Dockerfile
+    image: clinicsavers/notification:esd
+    restart: always
+    depends_on:
+      - rabbitmq
+    environment:
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+
+  ###############################################
+  # PrescribeDrug: The PrescribeDrug microservice
+  ###############################################
+  prescribeDrug:
+    build:
+      context: ./
+      dockerfile: prescribeDrug.Dockerfile
+    image: clinicsavers/prescribe_drug:esd
+    restart: always
+    depends_on:
+      - clinic
+      - patientRecord
+      - drug
+      - notification
+      - rabbitmq
+    environment:
+      rabbit_host: rabbitmq
+      rabbit_port: 5672
+      clinic_URL: http://clinic:5002/clinic/
+      drug_URL: http://drug:5007/drug/
+      patientRecord_URL: http://patientRecord:5006/patientRecord/
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5120:5120"
+
+  ###############################################
+  # ViewClinics: The ViewClinics microservice
+  ###############################################
+  viewClinics:
+    build:
+      context: ./
+      dockerfile: viewClinics.Dockerfile
+    image: clinicsavers/view_clinics:esd
+    restart: always
+    depends_on:
+      - clinic
+      - distance
+      - appointment
+      - patient
+    environment:
+      clinic_URL: http://clinic:5002/clinic
+      distance_URL: http://distance:5001/checkDist
+      appointment_URL: http://appointment:5003/appointment
+      patient_URL: http://patient:5000/patient/
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5100:5100"
+
+  ###############################################
+  # SetAppointment: The SetAppointment microservice
+  ###############################################
+  setAppointment:
+    build:
+      context: ./
+      dockerfile: setAppointment.Dockerfile
+    image: clinicsavers/set_appointment:esd
+    restart: always
+    depends_on:
+      - subsidy
+      - appointment
+      - patient
+    environment:
+      subsidy_URL: http://subsidy:5004/subsidy/
+      appt_URL: http://appointment:5003/createAppointment
+      PYTHONUNBUFFERED: 1
+      TZ: "Asia/Singapore"
+    ports:
+      - "5008:5008"
+ ###############################################
+  # Patient Log In
+  ###############################################
+  patient_login:
+    build:
+      context: ./patient_login
+      dockerfile: Dockerfile
+    image: clinicsavers/patient_login:esd
+    restart: always
+    ports:
+      - "3001:3001"
